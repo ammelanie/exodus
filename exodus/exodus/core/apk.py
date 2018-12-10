@@ -13,13 +13,13 @@ from .celery import app
 from .static_analysis import *
 
 
-@app.task(ignore_result = True)
+@app.task(ignore_result=True)
 def start_static_analysis(analysis):
     """
     Compute the entire static analysis
     :param analysis: a StaticAnalysis instance
     """
-    request = AnalysisRequest.objects.get(pk = analysis.query.id)
+    request = AnalysisRequest.objects.get(pk=analysis.query.id)
     request.description = _('Your request is running')
     request.save()
     storage_helper = RemoteStorageHelper(analysis.bucket)
@@ -157,13 +157,13 @@ def start_static_analysis(analysis):
     logging.info(request.description)
     request.save()
 
-    report = Report(apk_file = analysis.apk_name, storage_path = '', bucket = request.bucket)
+    report = Report(apk_file=analysis.apk_name, storage_path='', bucket=request.bucket)
     report.save()
-    net_analysis = NetworkAnalysis(report = report)
+    net_analysis = NetworkAnalysis(report=report)
     net_analysis.save()
     report.class_list_file = analysis.class_list_file
     report.save()
-    app = Application(report = report)
+    app = Application(report=report)
     app.handle = handle
     app.version = version
     app.version_code = version_code
@@ -176,25 +176,25 @@ def start_static_analysis(analysis):
         app.downloads = app_info['downloads']
     if icon_file != '':
         app.icon_path = analysis.icon_name
-    app.save(force_insert = True)
+    app.save(force_insert=True)
 
-    apk = Apk(application = app)
+    apk = Apk(application=app)
     apk.name = analysis.apk_name
     apk.sum = shasum
-    apk.save(force_insert = True)
+    apk.save(force_insert=True)
 
     for certificate in certificates:
-        c = Certificate(apk = apk)
+        c = Certificate(apk=apk)
         c.issuer = certificate.issuer
         c.fingerprint = certificate.fingerprint
         c.subject = certificate.subject
         c.serial_number = certificate.serial
-        c.save(force_insert = True)
+        c.save(force_insert=True)
 
     for perm in perms:
-        p = Permission(application = app)
+        p = Permission(application=app)
         p.name = perm
-        p.save(force_insert = True)
+        p.save(force_insert=True)
 
     report.found_trackers = trackers
     report.save()
