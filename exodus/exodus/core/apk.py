@@ -135,7 +135,7 @@ def start_static_analysis(analysis):
 
     # Application details
     try:
-        app_info = get_application_details(request.handle)
+        app_info = static_analysis.get_app_info()
     except Exception as e:
         logging.info(e)
         # Unable to get application details form Google Play

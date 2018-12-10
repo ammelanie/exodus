@@ -48,6 +48,27 @@ class StaticAnalysis(CoreSA):
                 return ''
             return icon_name
 
+    def get_app_info(self):
+        """
+        Get the application information like creator, number of downloads, etc.
+        :return: app info dictionary if available, None otherwise
+        """
+        app_details = self.get_application_details()
+        if app_details is None:
+            return None
+
+        info = {
+            'title': app_details.get('title'),
+            'creator': app_details.get('author'),
+            'size': app_details.get('installationSize'),
+            'downloads': app_details.get('numDownloads'),
+            'update': app_details.get('uploadDate'),
+            'handle': app_details.get('docId'),
+            'version': app_details.get('versionCode'),
+            'rating': 'unknown',
+        }
+        return info
+
 
 # TODO: remove this class if unused
 class ExGPlaycli(gplaycli.GPlaycli):
@@ -79,50 +100,6 @@ class ExGPlaycli(gplaycli.GPlaycli):
         self.gsfid = gsfid
         self.write_cached_token(token, gsfid)
         return token, gsfid
-
-
-def get_application_details(handle):
-    """
-    Get the application details like creator, number of downloads, etc.
-    :param handle: application handle
-    :return: application details dictionary
-    """
-    TIME_BEFORE_RETRY = 2
-    API_SEARCH_LIMIT = 5
-
-    gpc = gplaycli.GPlaycli()
-    gpc.token_enable = True
-    gpc.token_url = "https://matlink.fr/token/email/gsfid"
-    try:
-        gpc.token, gpc.gsfid = gpc.retrieve_token(force_new=False)
-    except (ConnectionError, ValueError):
-        try:
-            time.sleep(TIME_BEFORE_RETRY)
-            gpc.token, gpc.gsfid = gpc.retrieve_token(force_new=True)
-        except (ConnectionError, ValueError):
-            return None
-    gpc.connect()
-    objs = gpc.api.search(handle, API_SEARCH_LIMIT)
-    try:
-        for obj in objs:
-            if obj['docId'] != handle:
-                continue
-            infos = {
-                'title': obj['title'],
-                'creator': obj['author'],
-                'size': obj['installationSize'],
-                'downloads': obj['numDownloads'],
-                'update': obj['uploadDate'],
-                'handle': obj['docId'],
-                'version': obj['versionCode'],
-                'rating': 'unknown',
-            }
-            return infos
-    except Exception as e:
-        logging.error('Unable to parse applications details')
-        logging.error(e)
-        return None
-    return None
 
 
 def remove_token():
