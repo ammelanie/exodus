@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, unicode_literals
 
-import tempfile
+import logging
 import os
+import tempfile
 
 from django.utils.translation import gettext_lazy as _
 
@@ -10,7 +11,7 @@ from analysis_query.models import AnalysisRequest
 from exodus.core.storage import RemoteStorageHelper
 from reports.models import Certificate, Report, Application, Apk, Permission, NetworkAnalysis
 from .celery import app
-from .static_analysis import *
+from .static_analysis import download_apk, clear_analysis_files, StaticAnalysis
 
 
 @app.task(ignore_result=True)
