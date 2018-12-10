@@ -30,23 +30,27 @@ class StaticAnalysis(CoreSA):
         self.signatures = Tracker.objects.order_by('name')
         self._compile_signatures()
 
-    def get_application_icon(self, storage, icon_name):
+    def get_icon_and_phash(self, storage, icon_name):
         """
-        Get the application icon and save it to Minio
+        Get the application icon, save it to Minio and get its perceptual hash
         :param storage: minio storage helper
         :param icon_name: file name for the icon
-        :return: icon name if success, empty string in case of failure
+        :return: icon name and phash if success, otherwise empty strings
         """
         with NamedTemporaryFile() as f:
             icon_path = self.save_icon(f.name)
             if icon_path is None:
-                return ''
+                return ('', '')
+
             try:
                 storage.put_file(f.name, icon_name)
             except ResponseError as err:
                 logging.info(err)
-                return ''
-            return icon_name
+                icon_name = ''
+
+            icon_phash = self.get_phash(f.name)
+
+            return (icon_name, icon_phash)
 
     def get_app_info(self):
         """
