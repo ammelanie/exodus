@@ -78,7 +78,7 @@ def start_static_analysis(analysis):
 
     # List and save embedded classes
     try:
-        with tempfile.NamedTemporaryFile(delete = True) as fp:
+        with tempfile.NamedTemporaryFile(delete=True) as fp:
             static_analysis.save_embedded_classes_in_file(fp.name)
             storage_helper.put_file(fp.name, analysis.class_list_file)
     except Exception as e:
@@ -154,12 +154,17 @@ def start_static_analysis(analysis):
 
     change_description(request, _('Tracker analysis: success'))
 
-    report = Report(apk_file=analysis.apk_name, storage_path='', bucket=request.bucket)
+    report = Report(
+        apk_file=analysis.apk_name,
+        storage_path='',
+        bucket=request.bucket,
+        class_list_file=analysis.class_list_file
+    )
     report.save()
+
     net_analysis = NetworkAnalysis(report=report)
     net_analysis.save()
-    report.class_list_file = analysis.class_list_file
-    report.save()
+
     app = Application(report=report)
     app.handle = handle
     app.version = version
@@ -196,9 +201,8 @@ def start_static_analysis(analysis):
     report.found_trackers = trackers
     report.save()
 
+    change_description(request, _('Static analysis complete'))
     clear_analysis_files(storage_helper, analysis.tmp_dir, analysis.bucket, False)
-    request.description = _('Static analysis complete')
-    logging.info(request.description)
     request.processed = True
     request.report_id = report.id
     request.save()
