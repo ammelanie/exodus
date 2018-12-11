@@ -165,13 +165,15 @@ def start_static_analysis(analysis):
     net_analysis = NetworkAnalysis(report=report)
     net_analysis.save()
 
-    app = Application(report=report)
-    app.handle = handle
-    app.version = version
-    app.version_code = version_code
-    app.name = static_analysis.get_app_name()
-    app.icon_phash = icon_phash
-    app.app_uid = app_uid
+    app = Application(
+        report=report,
+        handle=handle,
+        version=version,
+        version_code=version_code,
+        name=static_analysis.get_app_name(),
+        icon_phash=icon_phash,
+        app_uid=app_uid
+    )
     if app_info is not None:
         app.name = app_info['title']
         app.creator = app_info['creator']
@@ -180,22 +182,28 @@ def start_static_analysis(analysis):
         app.icon_path = analysis.icon_name
     app.save(force_insert=True)
 
-    apk = Apk(application=app)
-    apk.name = analysis.apk_name
-    apk.sum = shasum
+    apk = Apk(
+        application=app,
+        name=analysis.apk_name,
+        sum=shasum
+    )
     apk.save(force_insert=True)
 
     for certificate in certificates:
-        c = Certificate(apk=apk)
-        c.issuer = certificate.issuer
-        c.fingerprint = certificate.fingerprint
-        c.subject = certificate.subject
-        c.serial_number = certificate.serial
+        c = Certificate(
+            apk=apk,
+            issuer=certificate.issuer,
+            fingerprint=certificate.fingerprint,
+            subject=certificate.subject,
+            serial_number=certificate.serial
+        )
         c.save(force_insert=True)
 
     for perm in perms:
-        p = Permission(application=app)
-        p.name = perm
+        p = Permission(
+            application=app,
+            name=perm
+        )
         p.save(force_insert=True)
 
     report.found_trackers = trackers
