@@ -13,6 +13,36 @@ from reports.models import Certificate, Report, Application, Apk, Permission, Ne
 from .celery import app
 from .static_analysis import download_apk, clear_analysis_files, StaticAnalysis
 
+EXIT_CODE = -1
+
+
+def change_description(request, msg):
+    """
+    Utility function to change the description message of the analysis request
+    :param request: an AnalysisRequest instance
+    :param msg: message to set as a description
+    """
+    request.description = msg
+    logging.info(request.description)
+    request.save()
+
+
+def save_error(storage_helper, analysis, request, msg):
+    """
+    Utility function to clear files and update analysis request object
+    :param storage_helper: minio storage helper
+    :param analysis: a StaticAnalysis instance
+    :param request: an AnalysisRequest instance
+    :param msg: message to set as a description
+    :return: exit code
+    """
+    clear_analysis_files(storage_helper, analysis.tmp_dir, analysis.bucket, True)
+    request.description = msg
+    request.in_error = True
+    request.processed = True
+    request.save()
+    return EXIT_CODE
+
 
 @app.task(ignore_result=True)
 def start_static_analysis(analysis):
@@ -28,35 +58,23 @@ def start_static_analysis(analysis):
     # Download APK and put it on Minio storage
     dl_r = download_apk(storage_helper, request.handle, analysis.tmp_dir, analysis.apk_name, analysis.apk_tmp)
     if not dl_r:
-        # Unable to download the APK
-        clear_analysis_files(storage_helper, analysis.tmp_dir, analysis.bucket, True)
-        request.in_error = True
-        request.description = _('Unable to download the APK')
-        request.processed = True
-        request.save()
-        return -1
+        msg = _('Unable to download the APK')
+        exit_code = save_error(storage_helper, analysis, request, msg)
+        return exit_code
 
-    request.description = _('Download APK: success')
-    logging.info(request.description)
-    request.save()
+    change_description(request, _('Download APK: success'))
 
     # Decode the APK file
     try:
         static_analysis = StaticAnalysis(analysis.apk_tmp)
         static_analysis.load_apk()
     except Exception as e:
-        print(e)
-        # Unable to decode the APK
-        clear_analysis_files(storage_helper, analysis.tmp_dir, analysis.bucket, True)
-        request.in_error = True
-        request.description = _('Unable to decode the APK')
-        request.processed = True
-        request.save()
-        return -1
+        logging.info(e)
+        msg = _('Unable to decode the APK')
+        exit_code = save_error(storage_helper, analysis, request, msg)
+        return exit_code
 
-    request.description = _('Decode APK: success')
-    logging.info(request.description)
-    request.save()
+    change_description(request, _('Decode APK: success'))
 
     # List and save embedded classes
     try:
@@ -65,17 +83,11 @@ def start_static_analysis(analysis):
             storage_helper.put_file(fp.name, analysis.class_list_file)
     except Exception as e:
         logging.info(e)
-        # Unable to compute the class list
-        clear_analysis_files(storage_helper, analysis.tmp_dir, analysis.bucket, True)
-        request.in_error = True
-        request.description = _('Unable to compute the class list')
-        request.processed = True
-        request.save()
-        return -1
+        msg = _('Unable to compute the class list')
+        exit_code = save_error(storage_helper, analysis, request, msg)
+        return exit_code
 
-    request.description = _('List embedded classes: success')
-    logging.info(request.description)
-    request.save()
+    change_description(request, _('List embedded classes: success'))
 
     # APK
     shasum = static_analysis.get_sha256()
@@ -105,13 +117,9 @@ def start_static_analysis(analysis):
         certificates = static_analysis.get_certificates()
     except Exception as e:
         logging.info(e)
-        # Unable to get certificates
-        clear_analysis_files(storage_helper, analysis.tmp_dir, analysis.bucket, True)
-        request.in_error = True
-        request.description = 'Unable to get certificates'
-        request.processed = True
-        request.save()
-        return -1
+        msg = _('Unable to get certificates')
+        exit_code = save_error(storage_helper, analysis, request, msg)
+        return exit_code
 
     # Fingerprint
     try:
@@ -126,37 +134,25 @@ def start_static_analysis(analysis):
             raise Exception('Unable to compute the icon perceptual hash')
     except Exception as e:
         logging.info(e)
-        # Unable to compute APK fingerprint
-        clear_analysis_files(storage_helper, analysis.tmp_dir, analysis.bucket, True)
-        request.in_error = True
-        request.description = 'Unable to compute APK fingerprint'
-        request.processed = True
-        request.save()
-        return -1
+        msg = _('Unable to compute APK fingerprint')
+        exit_code = save_error(storage_helper, analysis, request, msg)
+        return exit_code
 
     # Application details
     try:
         app_info = static_analysis.get_app_info()
     except Exception as e:
         logging.info(e)
-        # Unable to get application details form Google Play
-        clear_analysis_files(storage_helper, analysis.tmp_dir, analysis.bucket, True)
-        request.in_error = True
-        request.description = 'Unable to get application details from Google Play'
-        request.processed = True
-        request.save()
-        return -1
+        msg = _('Unable to get application details from Google Play')
+        exit_code = save_error(storage_helper, analysis, request, msg)
+        return exit_code
 
-    request.description = _('Get application details: success')
-    logging.info(request.description)
-    request.save()
+    change_description(request, _('Get application details: success'))
 
     # Find trackers
     trackers = static_analysis.detect_trackers()
 
-    request.description = _('Tracker analysis: success')
-    logging.info(request.description)
-    request.save()
+    change_description(request, _('Tracker analysis: success'))
 
     report = Report(apk_file=analysis.apk_name, storage_path='', bucket=request.bucket)
     report.save()
