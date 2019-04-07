@@ -111,13 +111,8 @@ class Command(BaseCommand):
                         storage_helper.get_file(apk_name, apk_tmp)
                     except ResponseError:
                         raise CommandError('Unable to get APK')
-<<<<<<< HEAD
                     static_analysis = StaticAnalysis(apk_path=apk_tmp)
-                    icon_path = static_analysis.get_application_icon(storage_helper, icon_name)
-=======
-                    static_analysis = StaticAnalysis(apk_path = apk_tmp)
                     icon_path, _ = static_analysis.get_icon_and_phash(storage_helper, icon_name)
->>>>>>> update standalone scripts
                     if icon_path != '':
                         report.application.icon_path = icon_path
                         report.application.save()

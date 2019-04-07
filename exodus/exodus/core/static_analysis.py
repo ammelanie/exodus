@@ -3,7 +3,6 @@ from __future__ import absolute_import, unicode_literals
 
 import logging
 import os
-import requests
 import shlex
 import shutil
 import time
@@ -13,7 +12,6 @@ from tempfile import NamedTemporaryFile
 
 from exodus_core.analysis.static_analysis import StaticAnalysis as CoreSA
 from future.moves import subprocess
-from gplaycli import gplaycli
 from minio.error import (ResponseError)
 
 from trackers.models import Tracker
@@ -72,38 +70,6 @@ class StaticAnalysis(CoreSA):
             'rating': 'unknown',
         }
         return info
-
-
-# TODO: remove this class if unused
-class ExGPlaycli(gplaycli.GPlaycli):
-    def __init__(self):
-        gplaycli.GPlaycli.__init__(self)
-
-    def after_download(self, failed_downloads):
-        pass
-
-    def retrieve_token(self, force_new=False):
-        token, gsfid = self.get_cached_token()
-        if token is not None and not force_new:
-            logging.info("Using cached token.")
-            return token, gsfid
-        logging.info("Retrieving token ...")
-        r = requests.get(self.token_url)
-        if r.text == 'Auth error':
-            msg = 'Token dispenser auth error, probably too many connections'
-            logging.info(msg)
-            raise ConnectionError(msg)
-        elif r.text == "Server error":
-            msg = 'Token dispenser server error'
-            logging.info(msg)
-            raise ConnectionError(msg)
-        token, gsfid = r.text.split(" ")
-        logging.info("Token: %s", token)
-        logging.info("GSFId: %s", gsfid)
-        self.token = token
-        self.gsfid = gsfid
-        self.write_cached_token(token, gsfid)
-        return token, gsfid
 
 
 def remove_token():
